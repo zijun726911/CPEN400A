@@ -34,6 +34,10 @@ a {
 
     width: 100%;
 }
+
+.message-user{
+    font
+}
 div.message{
     display: block;
 
@@ -46,8 +50,6 @@ div.message{
     margin:5px 5px ;
     word-break:keep-all;
     white-space:nowrap;
-
-
 
 }
 
