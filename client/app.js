@@ -1,5 +1,3 @@
-
-
 var LobbyView=function (lobby){
     var htmlString=`<div class="content">
                   <ul class="room-list">
@@ -28,21 +26,6 @@ var LobbyView=function (lobby){
 
     };
 
-
-    LobbyView.prototype.redrawList=()=> {
-        emptyDOM(this.listElem);
-        for(var id in this.lobby.rooms ){
-            console.log("in redrawList    this.lobby.rooms")
-            console.log(this.lobby.rooms)
-            var room=this.lobby.rooms[id]
-            this.listElem.appendChild(
-                createDOM(`<li><a href="#/chat/${id}">${room.name}</a> </li>`));
-        };
-
-
-
-    }
-
     this.buttonElem.addEventListener("click", ()=>{
         this.lobby.addRoom(( Object.keys(this.lobby.rooms).length+1)
                 ,this.inputElem.value,"",[]);
@@ -54,6 +37,18 @@ var LobbyView=function (lobby){
     this.redrawList();
 
 };
+
+LobbyView.prototype.redrawList=function () {
+    emptyDOM(this.listElem);
+    for(var id in this.lobby.rooms ){
+        var room=this.lobby.rooms[id]
+        this.listElem.appendChild(
+            createDOM(`<li><a href="#/chat/${id}">${room.name}</a> </li>`));
+    };
+
+
+};
+
 var ChatView=function (){
     var htmlString=`<div class="content">
                         <h4 class="room-name">Everyone in CPEN400A</h4>
@@ -76,12 +71,7 @@ var ChatView=function (){
     this.inputElem=this.elem.querySelector("textarea");
     this.buttonElem=this.elem.querySelector("button");
 
-    ChatView.prototype.sendMessage= ()=> {
 
-        this.room.addMessage(profile.username, this.inputElem.value);
-
-        this.inputElem.value="";
-    }
 
     this.buttonElem.addEventListener("click", ()=>{
        this.sendMessage()
@@ -93,31 +83,24 @@ var ChatView=function (){
         }
     });
 
+};
 
-    ChatView.prototype.setRoom= (room)=> {
-        this.room=room;
-        this.titleElem.innerText=this.room.name;
+ChatView.prototype.sendMessage=function() {
 
-        emptyDOM(this.chatElem);
+    this.room.addMessage(profile.username, this.inputElem.value);
 
-        this.room.messages.forEach(
-            (message)=>{
+    this.inputElem.value="";
+};
 
-                var myMessageClass="";
-                if(message['username']==profile.username){
-                     myMessageClass="my-message";
-                }
+ChatView.prototype.setRoom= function (room) {
+    this.room=room;
+    this.titleElem.innerText=this.room.name;
 
-                this.chatElem.appendChild(createDOM(
-                    ` <div class="message ${myMessageClass}">
-                                <span class="message-user"><b>${message['username']}</b></span><br/>
-                                <span class="message-text">${message['text']}</span>
-                            </div>` ));
+    emptyDOM(this.chatElem);
 
-            });
+    this.room.messages.forEach(
+        (message)=>{
 
-        console.log(this.room)
-        this.room.__proto__.onNewMessage=(message)=>{
             var myMessageClass="";
             if(message['username']==profile.username){
                 myMessageClass="my-message";
@@ -128,15 +111,24 @@ var ChatView=function (){
                                 <span class="message-user"><b>${message['username']}</b></span><br/>
                                 <span class="message-text">${message['text']}</span>
                             </div>` ));
-        };
 
+        });
+
+    this.room.onNewMessage=(message)=>{
+        var myMessageClass="";
+        if(message['username']==profile.username){
+            myMessageClass="my-message";
+        }
+
+        this.chatElem.appendChild(createDOM(
+            ` <div class="message ${myMessageClass}">
+                                <span class="message-user"><b>${message['username']}</b></span><br/>
+                                <span class="message-text">${message['text']}</span>
+                            </div>` ));
     };
 
-
-
-
-
 };
+
 var ProfileView=function (){
     var htmlString='<div class="content">\n' +
         '                <div class="profile-form">\n' +
@@ -162,22 +154,20 @@ var Room = function (id, name, image, messages){
     this.name=name;
     this.image= (image==undefined||image=="")? "assets/everyone-icon.png": image;
     this.messages= (messages==undefined) ? []:messages ;
-
-    Room.prototype.addMessage=(username, text)=>{
-        if(text.trim()=="") return;
-
-
-        var message={
-            'username': username,
-            'text': text
-        }
-        this.messages.push(message);
-        if(this.onNewMessage){
-            this.onNewMessage(message);
-        }
-    }
-
 }
+
+Room.prototype.addMessage= function (username, text){
+    if(text.trim()=="") return;
+
+    var message={
+        'username': username,
+        'text': text
+    }
+    this.messages.push(message);
+    if(this.onNewMessage){
+        this.onNewMessage(message);
+    }
+};
 
 
 
@@ -200,23 +190,19 @@ var Lobby=function(){
 
     this.rooms=rooms;
 
-    Lobby.prototype.addRoom=(id, name, image, messages)=> {
-        console.log("-------------------------------in  addRoom-------------------------" )
-        console.log(id)
-        console.log(name)
-        var room = new Room(id,name,image,messages);
-        this.rooms[id]=room;
+};
 
-        if(this.onNewRoom!=undefined){
-            this.onNewRoom(room);
-        }
-    };
+Lobby.prototype.addRoom= function (id, name, image, messages) {
+    var room = new Room(id,name,image,messages);
+    this.rooms[id]=room;
 
-    Lobby.prototype.getRoom= (roomId) =>{
-        return this.rooms[roomId];
-    };
+    if(this.onNewRoom){
+        this.onNewRoom(room);
+    }
+};
 
-
+Lobby.prototype.getRoom=function (roomId) {
+    return this.rooms[roomId];
 };
 
 
@@ -291,7 +277,7 @@ function main() {
     cpen400a.export(arguments.callee, { renderRoute,
         lobbyView,chatView,profileView,lobby });
 
-}
+};
 
 
 //helper
@@ -299,22 +285,11 @@ function main() {
 // Removes the contents of the given DOM element (equivalent to elem.innerHTML = '' but faster)
 function emptyDOM (elem){
     while (elem.firstChild) elem.removeChild(elem.firstChild);
-}
+};
 
 // Creates a DOM element from the given HTML string
 function createDOM (htmlString){
     let template = document.createElement('template');
     template.innerHTML = htmlString.trim();
     return template.content.firstChild;
-}
-
-/*
-  // example usage
- var messageBox = createDOM(
- `<div>
- <span>Alice</span>
- <span>Hello World</span>
- </div>`
- );
-
- */
+};
