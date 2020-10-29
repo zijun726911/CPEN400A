@@ -27,8 +27,19 @@ var LobbyView=function (lobby){
     };
 
     this.buttonElem.addEventListener("click", ()=>{
-        this.lobby.addRoom(( Object.keys(this.lobby.rooms).length+1)
-                ,this.inputElem.value,"",[]);
+        let roomName=this.inputElem.value;
+        var data={
+            name: roomName,
+            image: "assets/everyone-icon.png"
+        }
+        Service.addRoom(data).then((room)=>{
+            console.log(` in  Service.addRoom(data) room:`)
+            console.log(room)
+            this.lobby.addRoom( room.id, room.name, room.image,[]);
+        }).catch((e)=>{
+            console.log(e);
+        });
+
 
         this.inputElem.value=""
 
@@ -49,7 +60,7 @@ LobbyView.prototype.redrawList=function () {
 
 };
 
-var ChatView=function (){
+var ChatView=function (socket){
     var htmlString=`<div class="content">
                         <h4 class="room-name">Everyone in CPEN400A</h4>
                         <div class="message-list">
@@ -62,7 +73,7 @@ var ChatView=function (){
                   </div>`;
 
 
-
+    this.socket=socket;
     this.room=null;
 
     this.elem=createDOM(htmlString);
@@ -88,7 +99,11 @@ var ChatView=function (){
 ChatView.prototype.sendMessage=function() {
 
     this.room.addMessage(profile.username, this.inputElem.value);
-
+    this.socket.send(JSON.stringify({
+        roomId: this.room.id,
+        username: profile.username,
+        text: this.inputElem.value
+    }))
     this.inputElem.value="";
 };
 
@@ -172,23 +187,8 @@ Room.prototype.addMessage= function (username, text){
 
 
 var Lobby=function(){
-    var rooms={};
 
-
-
-    rooms["room-1"]=new Room("room-1","room1","",[ {'username': "Bob" , 'text': "room1_msg1"},
-                                    {'username': "Alice" , 'text': "room1_msg2"},
-                                    {'username': "Bob" , 'text': "room1_msg3"}]);
-
-    rooms["room-2"]=new Room("room-2","room2","",[ {'username': "Bob" , 'text': "room2_msg2"},
-                                    {'username': "Alice" , 'text': "room2_msg2"},
-                                    {'username': "Bob" , 'text': "room2_msg3"}]);
-
-    rooms["room-3"]=new Room("room-3","room3","",[ {'username': "Bob" , 'text': "room3_msg1"},
-                                    {'username': "Alice" , 'text': "room3_msg2"},
-                                    {'username': "Bob" , 'text': "room3_msg3"}]);
-
-    this.rooms=rooms;
+    this.rooms={};
 
 };
 
@@ -210,35 +210,122 @@ var profile={
     username:"Alice"
 }
 
+var Service={
+    origin: window.location.origin,
+    getAllRooms:  ()=> {
+
+        var url=Service.origin + "/chat";
+
+        return fetch(url).then( (response) =>{
+            // return  response.json();
+            console.log("in getAllRooms fetch")
+
+                if (response.ok){
+                    console.log("in getAllRooms response.ok:");
+
+                    return  response.json();
+                } else{
+
+                    console.log("in getAllRooms error: ===================")
+
+                    var text=response.text();
+                    console.log(text);
+                    throw Error(text);
+
+
+
+                }
+            });
+
+
+
+    },
+
+     addRoom: (data)=>{//
+
+
+         let  url=Service.origin + "/chat";
+         let opts={
+             body: JSON.stringify(data),
+             method:'POST',
+             headers: {
+                 'content-type': 'application/json'
+             },
+         };
+
+         return fetch(url,opts).then((response)=>{
+             // return  response.json();
+             if (response.ok){
+
+                 console.log("in addRoom response.ok:")
+                 console.log(response);
+                 return  response.json()
+             } else{
+
+                 console.log("in addRoom error: ====================")
+                 var text=response.text()
+                 console.log(text);
+                 throw Error(text);
+
+
+             }
+         });
+
+
+
+     }
+
+
+
+
+}
+
 window.addEventListener('load',main);
 
 function main() {
 
 
+
     var lobby=new Lobby();
     var lobbyView=new LobbyView(lobby);
 
-    var chatView=new ChatView();
+
+
+
+    var socket=new WebSocket("ws://localhost:8000")
+
+    socket.addEventListener("message",(event)=>{
+        var msg = JSON.parse(event.data);// msg have 3 fields: roomId, username, and text.
+        console.log("socket.addEventListener")
+        console.log(msg)
+
+
+        var room = lobby.getRoom(msg.roomId);
+        room.addMessage(msg.username,msg.text)
+
+    });
+
+    var chatView=new ChatView(socket);
     var profileView=new ProfileView();
 
 
 
     function renderRoute(){
         var hash = window.location.hash; //   #/chat/2
+        console.log(`in renderRoute hash:${hash}`)
+
         if (hash==""||hash=="#"||hash=="#/"){
+            refreshLobby();
             var pageView = document.getElementById("page-view");
-
             emptyDOM(pageView);
-
             pageView.appendChild(lobbyView.elem);
         }else {
-
             var pathArr = hash.split("/");
-
             switch (pathArr[1]) {
                 case "chat" :
                     var pageView = document.getElementById("page-view");
                     var roomId=pathArr[2];
+                    console.log(lobby.rooms);
 
                     var room=lobby.getRoom(roomId);
                     if(room!=null&&room!=undefined){
@@ -269,13 +356,36 @@ function main() {
 
     }
 
+
+    function refreshLobby(){
+        Service.getAllRooms().then((rooms)=>{
+            for (let room of rooms){
+                if(lobby.rooms[room.id]){
+                    lobby.rooms[room.id].name=room.name;
+                    lobby.rooms[room.id].image=room.image;
+
+                }else{//add new room
+                    lobby.addRoom(room.id,room.name,room.image,room.messages);
+
+                }
+
+            }
+
+        }).catch((e)=>{
+            console.log(e);
+        });
+    }
+
     window.addEventListener("popstate", renderRoute);
+
     renderRoute();
+    refreshLobby();
+    setInterval(refreshLobby,100000);
 
 
 
     cpen400a.export(arguments.callee, { renderRoute,
-        lobbyView,chatView,profileView,lobby });
+        lobbyView,chatView,profileView,lobby,refreshLobby,socket });
 
 };
 
