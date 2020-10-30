@@ -26,9 +26,7 @@ app.use('/', express.static(clientApp, { extensions: ['html'] }));
 
 
 broker.on('connection',(inComingClient)=>{
-	console.log(`ws connection`)
 	inComingClient.on('message',  (msg)=> {//// msg have 3 fields: roomId, username, and text.
-		console.log(`broker receive msg ${msg}`)
 		let msgObj = JSON.parse(msg);
 		broker.clients.forEach(
 			(client)=>{

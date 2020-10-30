@@ -33,8 +33,6 @@ var LobbyView=function (lobby){
             image: "assets/everyone-icon.png"
         }
         Service.addRoom(data).then((room)=>{
-            console.log(` in  Service.addRoom(data) room:`)
-            console.log(room)
             this.lobby.addRoom( room.id, room.name, room.image,[]);
         }).catch((e)=>{
             console.log(e);
@@ -212,25 +210,21 @@ var profile={
 
 var Service={
     origin: window.location.origin,
-    getAllRooms:  ()=> {
+    getAllRooms:   ()=> {
 
         var url=Service.origin + "/chat";
 
         return fetch(url).then( (response) =>{
             // return  response.json();
-            console.log("in getAllRooms fetch")
 
                 if (response.ok){
-                    console.log("in getAllRooms response.ok:");
 
                     return  response.json();
                 } else{
 
-                    console.log("in getAllRooms error: ===================")
-
-                    var text=response.text();
-                    console.log(text);
-                    throw Error(text);
+                    return  response.text().then((text) => {
+                        throw new Error(text);
+                    });
 
 
 
@@ -241,7 +235,7 @@ var Service={
 
     },
 
-     addRoom: (data)=>{//
+         addRoom:  (data)=>{//
 
 
          let  url=Service.origin + "/chat";
@@ -257,16 +251,12 @@ var Service={
              // return  response.json();
              if (response.ok){
 
-                 console.log("in addRoom response.ok:")
-                 console.log(response);
                  return  response.json()
              } else{
 
-                 console.log("in addRoom error: ====================")
-                 var text=response.text()
-                 console.log(text);
-                 throw Error(text);
-
+                 return  response.text().then((text) => {
+                     throw new Error(text);
+                 });
 
              }
          });
@@ -296,8 +286,6 @@ function main() {
 
     socket.addEventListener("message",(event)=>{
         var msg = JSON.parse(event.data);// msg have 3 fields: roomId, username, and text.
-        console.log("socket.addEventListener")
-        console.log(msg)
 
 
         var room = lobby.getRoom(msg.roomId);
@@ -325,7 +313,6 @@ function main() {
                 case "chat" :
                     var pageView = document.getElementById("page-view");
                     var roomId=pathArr[2];
-                    console.log(lobby.rooms);
 
                     var room=lobby.getRoom(roomId);
                     if(room!=null&&room!=undefined){
@@ -370,7 +357,6 @@ function main() {
                 }
 
             }
-
         }).catch((e)=>{
             console.log(e);
         });
@@ -378,8 +364,8 @@ function main() {
 
     window.addEventListener("popstate", renderRoute);
 
-    renderRoute();
     refreshLobby();
+    renderRoute();
     setInterval(refreshLobby,100000);
 
 
