@@ -122,7 +122,6 @@ ChatView.prototype.setRoom= function (room) {
     this.titleElem.innerText=this.room.name;
 
     emptyDOM(this.chatElem);
-
     this.room.messages.forEach(
         (message)=>{
 
@@ -211,6 +210,7 @@ var Room = function (id, name, image, messages){
     this.image= (image==undefined||image=="")? "assets/everyone-icon.png": image;
     this.messages= (messages==undefined) ? []:messages ;
     this.canLoadConversation= true;
+    this.createdTime=Date.now();
     this.getLastConversation = makeConversationLoader(this);
 }
 
@@ -338,7 +338,7 @@ var Service={
 function * makeConversationLoader(room){
 
 
-    let lastTimestamp=null;
+    let lastTimestamp=room.createdTime;
     while (room.canLoadConversation){
         room.canLoadConversation=false;
         yield Service.getLastConversation(room.id,lastTimestamp).then((conversation)=>{
