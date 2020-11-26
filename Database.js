@@ -36,10 +36,15 @@ Database.prototype.getRooms =async function(){
 
 }
 
+Database.prototype.getUser=async function(username){
+    let conn=await this.connected;
+    return  await conn.collection("users").findOne({username: username});
+
+}
+
 Database.prototype.getRoom =async function(room_id){
     // https://piazza.com/class/kecc4tzxnau2o3?cid=582
         let db =await this.connected;
-        // return   await db.collection("chatrooms").findOne({_id:  room_id});
 
         if(room_id instanceof ObjectID){
             //no ambiguity, e.g. ObjectID('5fa73f59f956533d68b4921f')
@@ -74,10 +79,7 @@ Database.prototype.addRoom = async function(room){
     if(room.name==undefined){
         throw new Error("room name is undefined");
     }else {
-        // if (!room._id){
-        //      room._id=  "room-"+ (await db.collection("chatrooms").count()+1);
-        //
-        // }
+
         let insertRes=await db.collection("chatrooms").insertOne(room);
          return insertRes.ops[0];
     }
@@ -126,5 +128,7 @@ Database.prototype.addConversation =async function(conversation){//conversation 
         return conversation;
     }
 }
+
+
 
 module.exports = Database;

@@ -105,14 +105,26 @@ var ChatView=function (socket){
     })
 
 };
-
+//https://stackoverflow.com/questions/2794137/sanitizing-user-input-before-adding-it-to-the-dom-in-javascript
+function sanitize(string) {
+    const map = {
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        "/": '&#x2F;',
+    };
+    const reg = /[<>"'/]/ig;
+    return string.replace(reg, (match)=>(map[match]));
+}
 ChatView.prototype.sendMessage=function() {
+    let text = this.inputElem.value;
 
-    this.room.addMessage(profile.username, this.inputElem.value);
+    this.room.addMessage(profile.username, text);
     this.socket.send(JSON.stringify({
         roomId: this.room.id,
         username: profile.username,
-        text: this.inputElem.value
+        text: text
     }))
     this.inputElem.value="";
 };
@@ -147,7 +159,7 @@ ChatView.prototype.setRoom= function (room) {
         this.chatElem.appendChild(createDOM(
             ` <div class="message ${myMessageClass}">
                                 <span class="message-user"><b>${message['username']}</b></span><br/>
-                                <span class="message-text">${message['text']}</span>
+                                <span class="message-text">${sanitize(message['text'])}</span>
                             </div>` ));
     };
 
@@ -219,7 +231,7 @@ Room.prototype.addMessage= function (username, text){
 
     var message={
         'username': username,
-        'text': text
+        'text': sanitize(text)
     }
     this.messages.push(message);
     if(this.onNewMessage){
@@ -258,7 +270,7 @@ Lobby.prototype.getRoom=function (roomId) {
 
 
 var profile={
-    username:"Alice"
+    username:"username"
 }
 
 var Service={
@@ -331,6 +343,21 @@ var Service={
                 });
 
             }
+        });
+    },
+
+    getProfile: ()=>{
+        let  url=Service.origin + `/profile`;
+
+        return fetch(url).then((response)=>{
+            if (response.ok){
+                return  response.json();
+            } else{
+                return  response.text().then((text) => {
+                    throw new Error(text);
+                });
+
+            }
         })
     }
 }
@@ -369,6 +396,9 @@ function main() {
 
     var lobby=new Lobby();
     var lobbyView=new LobbyView(lobby);
+    Service.getProfile().then(res=>{
+        profile.username = res.username;
+    })
 
 
 
@@ -391,7 +421,7 @@ function main() {
 
     function renderRoute(){
         var hash = window.location.hash; //   #/chat/2
-        console.log(`in renderRoute hash:${hash}`)
+
 
         if (hash==""||hash=="#"||hash=="#/"){
             refreshLobby();
@@ -462,7 +492,7 @@ function main() {
 
 
     cpen400a.export(arguments.callee,
-        { chatView,lobby });
+        { chatView,lobby,Service,main });
 
 };
 
